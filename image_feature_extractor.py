@@ -8,6 +8,7 @@ import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
 import numpy as np
+from PIL import Image
 
 class Img2Vec():
     RESNET_OUTPUT_SIZES = {
@@ -33,8 +34,9 @@ class Img2Vec():
         :param model: String name of requested model
         :param layer: String or Int depending on model.  See more docs: https://github.com/christiansafka/img2vec.git
         :param layer_output_size: Int depicting the output size of the requested layer
-        """
-        self.device = torch.device(f"cuda:{gpu}" if cuda else "cpu")
+        """ 
+#         self.device = torch.device(f"cuda:{gpu}" if cuda else "cpu")
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.layer_output_size = layer_output_size
         self.model_name = model
 
@@ -43,10 +45,13 @@ class Img2Vec():
         self.model = self.model.to(self.device)
 
         self.model.eval()
-
+        
+#         self.toPILImage = transforms.ToPILImage()
         self.scaler = transforms.Resize((224, 224))
         self.normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                               std=[0.229, 0.224, 0.225])
+        
+        
         self.to_tensor = transforms.ToTensor()
 
     def get_vec(self, images, tensor=False):
@@ -56,7 +61,8 @@ class Img2Vec():
         :returns: Numpy ndarray
         """
 #         images = [self.normalize(self.to_tensor(self.scaler(im))) for im in images]
-        a = [self.normalize(self.to_tensor(im)) for im in images]
+#         a = [self.normalize(self.to_tensor(im)) for im in images]
+        a = [self.normalize(self.to_tensor(self.scaler(Image.fromarray(im, "RGB")))) for im in images]
 
         images = torch.stack(a).to(self.device)
         if self.model_name in ['alexnet', 'vgg']:
@@ -71,8 +77,9 @@ class Img2Vec():
 
         h = self.extraction_layer.register_forward_hook(copy_data)
         with torch.no_grad():
-            h_x = self.model(images)
+            h_x = self.model(images) 
         h.remove()
+        
 
         if tensor:
             return my_embedding
